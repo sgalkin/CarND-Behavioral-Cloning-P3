@@ -18,6 +18,9 @@ import tensorflow as tf
 import h5py
 from keras import __version__ as keras_version
 
+import cvutils
+import pilutils
+
 sio = socketio.Server()
 app = Flask(__name__)
 model = None
@@ -63,6 +66,7 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
+        image_array = cvutils.rgb2yuv(image_array)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
         throttle = controller.update(float(speed))
@@ -74,6 +78,7 @@ def telemetry(sid, data):
         if args.image_folder != '':
             timestamp = datetime.utcnow().strftime('%Y_%m_%d_%H_%M_%S_%f')[:-3]
             image_filename = os.path.join(args.image_folder, timestamp)
+            image = pilutils.vector(image, 25*steering_angle)
             image.save('{}.jpg'.format(image_filename))
     else:
         # NOTE: DON'T EDIT THIS.
