@@ -17,6 +17,7 @@ import itertools
 import os
 import pickle
 
+
 def prepare_data(path, reg, train_fraction, valid_fraction):
     def build_repository(registry):
         repo = Repository(os.path.join(registry.prefix, 'repo'))
@@ -42,6 +43,7 @@ def prepare_data(path, reg, train_fraction, valid_fraction):
     test.store(os.path.splitext(path)[0] + '.test.csv')
     return train, valid, repo
 
+
 def make_normalized_reader(reg, factor):
     def filter(x): # take non zero measurements and factor zero mesurments
         return float(x[-1]) != 0 or np.random.rand() < factor
@@ -58,7 +60,8 @@ def train(path, reg):
 
     def augmentation_factor(make_generator, reg, repo):
         return len(list(make_generator(LimitedReader(reg, 1), repo)))
-    
+
+    # Tunables. TODO: make configurable via arguments
     EPOCHS=30
     BATCH_SIZE=1280
     BOOST=1
@@ -66,18 +69,23 @@ def train(path, reg):
     if os.path.exists(path):
         raise IOError('File {} already exists'.format(path))
 
+    # prepare train and validation set, and build images repository
+    # TODO: make fractions configurable
     train, valid, repo = prepare_data(path, reg, 0.7, 0.12)
 
+    # take overpopulated 0 angle with given probability
     normalized_train = make_normalized_reader(train, 0.1)
     normalized_train_len = len(list(normalized_train.read(Registry.STEERING)))
     print('Normalized train set:', normalized_train_len)
 
+    # evaluate augmentation factor for generator used in training
     augmentation_factor_train = augmentation_factor(
         lambda reg, repo: pipeline.train_generator(reg, repo, BOOST), train, repo)
     augmentation_factor_valid = augmentation_factor(pipeline.valid_generator, valid, repo)
     print('Augmenation factor train:', augmentation_factor_train)
     print('Augmenation factor valid:', augmentation_factor_valid)
 
+    # create infitine batch generator for training data
     infinite_train_generator = generator.infinite_generator(
         lambda: generator.shuffle_batch(
             generator.batch_generator(
@@ -85,13 +93,18 @@ def train(path, reg):
                 BATCH_SIZE)),
         lambda: normalized_train.shuffle())
 
+    # create infinite batch generator for validataion data
     infinite_valid_generator = generator.batch_generator(
         pipeline.valid_generator(CycleReader(valid), repo), BATCH_SIZE)
 
+    # evaluate input image shape
     input_shape=cv2.imread(repo.resolve(next(valid.read(Registry.CENTER)))).shape
+
+    # build and compile the model
     m = model.model(input_shape=input_shape)
     m.compile(loss='mse', optimizer='adam')
-    
+
+    # train the model
     history = m.fit_generator(
         epochs=EPOCHS,
         generator=infinite_train_generator,
@@ -105,11 +118,14 @@ def train(path, reg):
         ],
     )
 
+    # store model
     m.save(path)
+
+    # store training history
     with open(os.path.splitext(path)[0] + '.history.p', 'wb') as h:
         pickle.dump(history.history, h)
-    
 
+        
 def validate(path, reg):
     if not os.path.exists(path):
         raise IOError('File {} not found'.format(path))
