@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from registry import Registry
 from repository import Repository
 from reader import CycleReader, FilteredReader, LimitedReader
@@ -57,8 +59,8 @@ def train(path, reg):
     def augmentation_factor(make_generator, reg, repo):
         return len(list(make_generator(LimitedReader(reg, 1), repo)))
     
-    EPOCHS=1
-    BATCH_SIZE=16
+    EPOCHS=30
+    BATCH_SIZE=1280
     BOOST=1
     
     if os.path.exists(path):
@@ -66,7 +68,7 @@ def train(path, reg):
 
     train, valid, repo = prepare_data(path, reg, 0.7, 0.12)
 
-    normalized_train = make_normalized_reader(LimitedReader(train, 16), 0.025)
+    normalized_train = make_normalized_reader(train, 0.1)
     normalized_train_len = len(list(normalized_train.read(Registry.STEERING)))
     print('Normalized train set:', normalized_train_len)
 
@@ -98,13 +100,12 @@ def train(path, reg):
         validation_steps=(augmentation_factor_valid*len(valid))//BATCH_SIZE,
         verbose=1,
         callbacks=[
-            EarlyStopping(monitor='val_loss', patience=10, min_delta=0.0001),
+            EarlyStopping(monitor='val_loss', patience=15, min_delta=0.0001),
             ModelCheckpoint(monitor='val_loss', filepath=checkpoint(path)),
         ],
     )
 
     m.save(path)
-    print(history.history)
     with open(os.path.splitext(path)[0] + '.history.p', 'wb') as h:
         pickle.dump(history.history, h)
     
