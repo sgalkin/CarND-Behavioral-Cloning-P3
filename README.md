@@ -10,39 +10,61 @@ The goals / steps of this project are the following:
 * Summarize the results with a written report
 ---
 
-## Rubric
-1. The submission includes a model.py file, drive.py, model.h5 a writeup report
-and video.mp4.
-2. The model provided can be used to successfully operate the simulation.
-3. --_The code in model.py uses a Python generator, if needed, to generate data for training rather than storing the training data in memory._-- The model.py code is clearly organized and comments are included where needed.
-4. --_The neural network uses convolution layers with appropriate filter sizes. Layers exist to introduce nonlinearity into the model. The data is normalized in the model._--
-5. --_Train/validation/test splits have been used, and the model uses dropout layers or other methods to reduce overfitting._--
-6. --_Learning rate parameters are chosen with explanation, or an Adam optimizer is used._--
-7. --_Training data has been chosen to induce the desired behavior in the simulation (i.e. keeping the car on the track)._--
-8. The README thoroughly discusses the approach taken for deriving and designing a model architecture fit for solving the given problem.
-9. The README provides sufficient details of the characteristics and qualities of the architecture, such as the type of model used, the number of layers, the size of each layer. Visualizations emphasizing particular qualities of the architecture are encouraged.
-10. The README describes how the model was trained and what the characteristics of the dataset are. Information such as how the dataset was generated and examples of images from the dataset must be included.
-11. No tire may leave the drivable portion of the track surface. The car may not pop up onto ledges or roll over any surfaces that would otherwise be considered unsafe (if humans were in the vehicle).
----
-
 ## Project structure
 
 The project includes the following files:
-* `model.py` - containing the script to create and train the model
+* `model.py` - containing the script to create the model
+* `train.py` - containing the script to train the model
+* `valid.py` - containing the script to validate the model
 * `drive.py` - for driving the car in autonomous mode
 * `model.h5` - containing a trained convolution neural network
 * `registry.py` - containing helper class for handling driving log
 * `reader.py` - banch of helper classes to iterate through data points
 * `repository.py` - helper class the provides git-like filesystem layout for
   huge directories
+* `generator.py` - core routines for data generation
+* `pipeline.py` - pipeline definition for training and validation
+* `cvutils.py` - bunch of routines used in data augmentation
 * `README.md` - project quick overview and summarizing the results
 
 ## Usage
+### Training
+Model can be trained using following command
+
+```sh
+python train.py -t dataset/driving_log.csv model.h5
+```
+
+Input:
+  *  _dataset/driving_\__log.csv_ - path to driving log
+  *  _model.h5_ - path to model
+
+Output:
+  * _model.checkpoint_ - directory containing model snapshot for each epochs
+  * _model.test.csv_ - fraction of original driving log which was not used in
+    training process, could be used for validation
+  * _model.history.p_ - pickled version of training history
+
+### Validation
+Model performance could be measured by following command
+
+```sh
+python train.py -v dataset/model.test.csv model.h5
+```
+
+Input:
+  * _dataset/model.test.csv_ - validation data set
+  * _model.h5_ - model
+
+Output:
+  * _loss_ - will be printed on console
+
+### Driving
 Using the UdaCity provided simulator [1] and my `drive.py` file, the car can be
 driven autonomously around the track by executing
 
 ```sh
-python drive.py model.h5
+python drive.py model.h5 [output]
 ```
 
 ## Model Architecture and Training Strategy
@@ -64,18 +86,6 @@ work was focused on the similar task.
 In order to gauge how well the model was working, I split my image and steering
 angle data into a training, validation, and test sets. See data analyze section
 for details.
-
-_I found that my first model had a low mean squared error on the training set but
-a high mean squared error on the validation set. This implied that the model was
-overfitting.
-
-To combat the overfitting, I modified the model so that ...
-
-Then I ...
-
-The final step was to run the simulator to see how well the car was driving
-around track one. There were a few spots where the vehicle fell off the track...
-to improve the driving behavior in these cases, I ...._
 
 At the end of the process, the vehicle is able to drive autonomously around
 the track without leaving the road.
@@ -152,7 +162,7 @@ find appropriate steering angle correction. Also one have to keep in mind the
 correction angle will be over represented in the data (since 'go straight') is
 over represented.
 After several experiments with static and random correction angles, I choose
-correction angle to be _normally distributed with mu=0.15, sigma=0.03_.
+correction angle to be _normally distributed with mu=0.1, sigma=0.03_.
 Randomization in my opinion should reduce chance of overfitting.
 
 ##### Random Brightness and Contrast
@@ -190,14 +200,18 @@ Training data grooming pipeline
 4. Generating N (_2_ in my case) additional images using rotation
 5. Angle randomization
 
+Sample of all images generated from one data point (N=1):
+
+![Sample](./images/augmented.png)
+
 Data distribution after pipeline:
 
-![After Pipeline](./images/pipeline.png)
+![After Pipeline](./images/pipeline.80.png)
 
 #### Preprocessing
 
 Each image pass the following preprocessing steps before feeding into the
-network (some steps implemented as lamda layers)
+network (some steps implemented as lambda layers)
 
 ##### Colorspace Conversion
 
@@ -218,7 +232,7 @@ Each channel of an image normalized in order to have value in range _[-1, 1]_.
 
 ### Model
 
-The final model architecture (`model.py` lines !TBD!) consisted of a convolution
+The final model architecture (`model.py`) consisted of a convolution
 neural network with the following layers and layer sizes
 
 | Layer    | Input       | Output     | Kernel | Filters | Stride | Activation |
@@ -232,7 +246,6 @@ neural network with the following layers and layer sizes
 | Convolution  | (5, 35, 64)   | (3, 33, 64)   | (3, 3) | 64 | (1, 1) | ReLU |
 | MaxPooling   | (3, 33, 64)   | (1, 31, 64)   | (3, 3) |    | (1, 1) |      |
 | Flatten      | (1, 31, 64)   | 1984          |        |    |        |      |
-| Dropout(0.5) | 1984          | 1984          | | | | |
 | Dense        | 1984          | 100           | | | | ReLU   |
 | Dense        | 100           | 50            | | | | ReLU   |
 | Dense        | 50            | 10            | | | | ReLU   |
@@ -241,32 +254,72 @@ neural network with the following layers and layer sizes
 ![Model](./images/model.png)
 
 All layers except the output use ReLU activation to introduce nonlinearity.
-The model includes RELU layers to introduce nonlinearity.
+The model includes ReLU layers to introduce nonlinearity.
 Model uses Keras cropping and lambda layers in order to prepare (crop and
-normalize) input data. To reduce overfitting the mode uses dropout layer.
+normalize) input data.
+
+There is no dropout layer in the model, see next section for thoughts about
+overfitting/underfitting.
 
 ### Training Process
-I used this training data for training the model. The validation set helped
-determine if the model was over or under fitting. Finally test data helped to
-determine real model performance. I used an Adam optimizer so that manually
-training the learning rate wasn't necessary.
+I used this training data for training the model.
+  *  Loss function - mean squared error - reasonable choice for regression model
+  *  Optimizer - Adam - adaptive learning rate simplifies learning and reduces
+     number of hyper parameters
+  *  Batch size - 768 - when using AWS/Azure high performance servers for
+     training there is no limitation on RAM, and batch size could be chosen
+     as big as graphics card memory size allows, since transferring data between
+     RAM and graphics card memory could become a bottleneck.
+  *  Number of epochs - 30
+
+Learning curve for training:
+
+![Learning curve](./images/learning.curve.png)
+
+Key observations and potential explanations:
+  * Model seems to be under trained - loss on training set keep going down. On
+    other hand loss on validation set doesn't change a lot. This could be a
+    sign of overfitting, so stopping at reasonable number of epochs good enough.
+  * Even without dropout or other regularization techniques model doesn't look
+    overfitted. In my opinion reasons are
+      *  Relatively small number of parameters
+      *  Massive randomization of input and measurement
+      *  Huge disproportion of 'go straight' is good in fact. The network seems
+         new examples from this category each epoch
+
+The validation set helped determine if the model was over or under fitting.
+Finally test data helped to determine real model performance.
 
 The model was tested by running it through the
 simulator and ensuring that the vehicle could stay on the track.
 
 ## Potential Improvements
-* Tensorflow train data generation
-* Multiprocessing for train data generation
+* Generate train data batches with GPU, currently CPU used
+* Generate train data batches using multiprocessing, single core used currently
 
-## Data Sets
+## Data Set
+| Name | Link |
+|------|------|
+| UdaCity training data       | https://mega.nz/#!V9tASADT!TV_YZUTJi9pNRUG1j7Raev0oK3KbUgszAJkKKxOiXL8 |
+| Track 01 forward direction  | https://mega.nz/#!Z0dhDITD!XWJcWTTS9-67PndO2cgstjxdJcoaTEGY9yohW3geD8Y |
+| Track 01 backward direction | https://mega.nz/#!RxNwkbza!BzeH7kLL133YO2CbUQUMMDCdsGe3q_Z_N7FoaAOBcDU |
+| Track 01 random samples     | https://mega.nz/#!18ciRCzR!_6Pu0JHbsEi2gn8PmHTJPEK8EsPsX2jorCoGY3qExIU |
+| Track 02 forward direction  | https://mega.nz/#!xs9H3Yqa!82WpBN9cZIYMKaV9_hFgi4pqnP2Xiy6jlWJN-dKvssE |
+| Track 02 backward direction | https://mega.nz/#!048UlLgI!CBciscwULl_zYg4H3btm95XU0WJKxGFgGvJ3SrE5JbM |
+| Track 02 random samples     | https://mega.nz/#!NhkhUIqL!S-TvoKj_y4C8Gmt_FsxRVN15XUPPcEbfQ_emSvJVLYQ |
+| Track 03                    | https://mega.nz/#!VgMGXZSL!iT-DiEYqiVcZjZ8F-34C8b01bhT3C6Av4i8_TUpOY6s |
 
-## References
+## Video
+| Track               | Car View                      | Simulator View                |
+|---------------------|-------------------------------|-------------------------------|
+| track01 - lake      | <https://vimeo.com/234067418> | <https://vimeo.com/234067436> |
+| track02 - jungle    | <https://vimeo.com/234067565> | <https://vimeo.com/234067584> |
+| track03 - mountains | <https://vimeo.com/234067698> | <https://vimeo.com/234067714> |
+
+## Reference
 1. Udacity's Self-Driving Car Simulator
    <https://github.com/udacity/self-driving-car-sim>
 2. Bojarski, M., Del Testa, D., Dworakowski, D., Firner, B., Flepp,
    B., Goyal, P., Jackel, L. D., Monfort, M., Muller, U., Zhang, J.,
    et al. (2016). End to end learning for self-driving cars.
    arXiv preprint arXiv:1604.07316.
-3. Clevert, D.-A., Unterthiner, T., Hochreiter S. (2015). Fast and
-   accurate deep network learning by exponential linear units (elus).
-   arXiv preprint arXiv:1511.07289, 2015.
