@@ -1,0 +1,6 @@
+# archives
+*.xz
+
+# models
+*.h5
+
