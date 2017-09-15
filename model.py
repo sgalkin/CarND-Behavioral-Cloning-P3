@@ -14,8 +14,8 @@ def model(input_shape, initializer='truncated_normal', activation='relu', out_ac
     m.add(layers.Conv2D(48, (5, 5), strides=(2, 2), activation=activation, kernel_initializer=initializer))
 
     m.add(layers.Conv2D(64, (3, 3), strides=(1, 1), activation=activation, kernel_initializer=initializer))
-    m.add(layers.Conv2D(72, (3, 3), strides=(1, 1), activation=activation, kernel_initializer=initializer))
-    m.add(layers.Conv2D(80, (3, 3), strides=(1, 1), activation=activation, kernel_initializer=initializer))
+    m.add(layers.Conv2D(64, (3, 3), strides=(1, 1), activation=activation, kernel_initializer=initializer))
+    m.add(layers.MaxPooling2D((3, 3), strides=(1, 1)))
 
     m.add(layers.Dropout(0.5))
 
