@@ -52,7 +52,7 @@ def train(path, reg):
     def checkpoint(path):
         name, ext = os.path.splitext(path)
         pattern = os.path.join(name + '.checkpoint',
-                               name + '.e{epoch:02d}.l{val_loss:.4f}' + ext)
+                               os.path.basename(name) + '.e{epoch:02d}.l{val_loss:.4f}' + ext)
         os.makedirs(os.path.dirname(pattern), exist_ok=True)
         return pattern
 
