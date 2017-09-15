@@ -74,3 +74,6 @@ if __name__ == '__main__':
     assert(abs(len(r1) - len(r2)) <= 1) 
 
     r1.store('test/reg1.csv')
+    lr1 = Registry('test/reg1.csv')
+    assert(sorted(lr1.read()) == sorted(r1.read()))
+    os.remove('test/reg1.csv')
