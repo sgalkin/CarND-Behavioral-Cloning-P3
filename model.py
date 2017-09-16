@@ -6,7 +6,7 @@ def model(input_shape, initializer, activation, out_activation, dropout, spatial
     m = Sequential()
 
     # idenetity lambda layer just to land input shape there and make changing of following layers easier
-    m.add(layers.Lambda(input_shape=input_shape, lambda x: x))
+    m.add(layers.Lambda(input_shape=input_shape, function=lambda x: x))
     
     m.add(layers.Cropping2D(cropping=((55, 25), (0, 0))))
 

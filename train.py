@@ -116,7 +116,8 @@ def train(path, reg):
                     initializer=INITIALIZER,
                     activation=ACTIVATION,
                     out_activation=OUT_ACTIVATION,
-                    dropout=DROPOUT)
+                    dropout=DROPOUT,
+                    spatial_dropout=SPATIAL_DROPOUT)
     m.compile(loss=LOSS, optimizer=OPTIMIZER)
 
     # train the model
