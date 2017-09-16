@@ -61,11 +61,22 @@ def train(path, reg):
     def augmentation_factor(make_generator, reg, repo):
         return len(list(make_generator(LimitedReader(reg, 1), repo)))
 
-    # Tunables. TODO: make configurable via arguments
+    # Training Tunables. TODO: make configurable via arguments
     EPOCHS=30
     BATCH_SIZE=1280
     BOOST=1
     
+    # Model Tunables
+    INITIALIZER = 'truncated_normal'
+    ACTIVATION = 'relu'
+    OUT_ACTIVATION = 'linear'
+    DROPOUT = None
+    SPATIAL_DROPOUT = None
+
+    # Compilation Tunables
+    LOSS = 'mse'
+    OPTIMIZER = 'adam'
+
     if os.path.exists(path):
         raise IOError('File {} already exists'.format(path))
 
@@ -101,8 +112,12 @@ def train(path, reg):
     input_shape=cv2.imread(repo.resolve(next(valid.read(Registry.CENTER)))).shape
 
     # build and compile the model
-    m = model.model(input_shape=input_shape)
-    m.compile(loss='mse', optimizer='adam')
+    m = model.model(input_shape=input_shape,
+                    initializer=INITIALIZER,
+                    activation=ACTIVATION,
+                    out_activation=OUT_ACTIVATION,
+                    dropout=DROPOUT)
+    m.compile(loss=LOSS, optimizer=OPTIMIZER)
 
     # train the model
     history = m.fit_generator(
