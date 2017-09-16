@@ -287,6 +287,10 @@ Key observations and potential explanations:
       *  Massive randomization of input and measurement
       *  Huge disproportion of 'go straight' is good in fact. The network seems
          new examples from this category each epoch
+  * Figure below shows weights and biases distribution, which looks sane.
+    Weights tend to be normally distributed around 0 within reasonable range.
+    This make me think L2 weights regularization will not help much.
+    ![Weights](./images/weights.png)
 
 The validation set helped determine if the model was over or under fitting.
 Finally test data helped to determine real model performance.
